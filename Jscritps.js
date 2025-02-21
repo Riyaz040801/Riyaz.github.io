@@ -48,13 +48,15 @@ const roles = ["3D Artist", "Unreal Engine Developer",  "Gamer", "Content Creato
             const closeLightbox = document.getElementById("close-lightbox");
             const portfolioImages = document.querySelectorAll(".portfolio-image");
         
-            // Open lightbox when an image is clicked
-            portfolioImages.forEach(image => {
-                image.addEventListener("click", () => {
-                    if (image.tagName.toLowerCase() === "img") {
-                        lightboxImage.src = image.src; // Set the lightbox image source
-                        lightbox.style.display = "block"; // Show the lightbox
+            // Open lightbox when an image or video is clicked
+            portfolioImages.forEach(media => {
+                media.addEventListener("click", () => {
+                    if (media.tagName.toLowerCase() === "img") {
+                        lightboxImage.src = media.src; // Set the lightbox image source
+                    } else if (media.tagName.toLowerCase() === "video") {
+                        lightboxImage.src = media.poster; // Use the video poster as the lightbox image
                     }
+                    lightbox.style.display = "block"; // Show the lightbox
                 });
             });
         
