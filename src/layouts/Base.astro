@@ -3,6 +3,7 @@ import { getImage } from 'astro:assets';
 import { site } from '../data/site';
 import ogSource from '../assets/work/3d/car-garage.png';
 import '../styles/global.css';
+import '../styles/interactive.css';
 
 interface Props {
   title?: string;
@@ -20,6 +21,7 @@ const jsonLd = {
   '@type': 'Person',
   name: site.name,
   jobTitle: site.role,
+  worksFor: { '@type': 'Organization', name: 'Maersk Training' },
   address: { '@type': 'PostalAddress', addressLocality: 'Chennai', addressCountry: 'IN' },
   url: canonical.href,
 };
@@ -33,8 +35,8 @@ const jsonLd = {
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
-    <link rel="icon" type="image/png" href={`${base}favicon.png`} />
-    <meta name="theme-color" content="#0d0d0f" />
+    <link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
+    <meta name="theme-color" content="#070707" />
 
     <meta property="og:type" content="website" />
     <meta property="og:title" content={title} />
@@ -49,7 +51,7 @@ const jsonLd = {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@500;600;700;800&display=swap"
     />
     <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
   </head>

@@ -1,18 +1,37 @@
 ---
 import { Picture, getImage } from 'astro:assets';
 import Base from '../layouts/Base.astro';
-import { site, socials, about, services, tools } from '../data/site';
+import {
+  site,
+  socials,
+  highlights,
+  about,
+  services,
+  experience,
+  education,
+  skillGroups,
+  software,
+  languages,
+  passions,
+} from '../data/site';
 import { projects, categories } from '../data/projects';
+import { moments } from '../data/moments';
+import Scene3D from '../components/Scene3D.astro';
+import Cursor from '../components/Cursor.astro';
+import Logo from '../components/Logo.astro';
 import heroImage from '../assets/work/3d/car-garage.png';
+import heroImage2 from '../assets/work/3d/watch-podium.png';
 import profile from '../assets/site/profile.jpeg';
 
 const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 const resumeUrl = `${base}${site.resume}`;
 const year = new Date().getFullYear();
+const [firstName] = site.name.split(' ');
 
 // Full-size versions for the lightbox (never larger than the original).
+// Projects come first, then moments — so a moment's gallery index is projects.length + i.
 const galleries = await Promise.all(
-  projects.map(async (p) => ({
+  [...projects, ...moments].map(async (p) => ({
     title: p.title,
     images: await Promise.all(
       p.images.map(async ({ src, alt }) => {
@@ -23,170 +42,387 @@ const galleries = await Promise.all(
   })),
 );
 
+const nav = [
+  { href: '#work', label: 'Work' },
+  { href: '#skills', label: 'Skills' },
+  { href: '#career', label: 'Career' },
+  { href: '#moments', label: 'Moments' },
+  { href: '#contact', label: 'Contact' },
+];
 ---
 
 <Base>
+  <div class="sky" aria-hidden="true"></div>
+  <Cursor />
+
   <header class="topbar" id="top">
-    <div class="container topbar-inner">
-      <a href="#top" class="brand">{site.name}</a>
-      <nav aria-label="Main">
-        <ul>
-          <li><a href="#work">Work</a></li>
-          <li><a href="#about">About</a></li>
-          <li><a href="#contact">Contact</a></li>
-          <li class="hide-sm"><a class="btn btn-small" href={resumeUrl} download>Résumé</a></li>
-        </ul>
-      </nav>
-    </div>
+    <a href="#top" class="logo" aria-label={`${site.name}, back to top`} data-cursor="Top">
+      <Logo size={34} />
+    </a>
+    <nav class="pill" aria-label="Main">
+      <ul id="nav-list">
+        {nav.map((n) => <li><a href={n.href}>{n.label}</a></li>)}
+      </ul>
+    </nav>
+    <a class="top-cta" href={resumeUrl} download>Résumé <span aria-hidden="true">↗</span></a>
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="nav-list" aria-label="Menu">
+      <span></span><span></span>
+    </button>
   </header>
 
   <main id="main">
-    <section class="hero" aria-labelledby="hero-title">
-      <Picture
-        src={heroImage}
-        formats={['avif', 'webp']}
-        fallbackFormat="jpg"
-        widths={[800, 1400, 2000, 2800]}
-        sizes="100vw"
-        alt=""
-        class="hero-bg"
-        loading="eager"
-        fetchpriority="high"
-      />
-      <div class="container hero-content">
-        <p class="eyebrow">{site.location}</p>
-        <h1 id="hero-title">{site.name}</h1>
-        <p class="hero-role">{site.role}</p>
-        <p class="hero-lede">I build product renders, real-time environments and playable prototypes.</p>
-        <div class="hero-actions">
-          <a class="btn btn-primary" href="#work">View work</a>
-          <a class="btn" href={resumeUrl} download>Download résumé</a>
+    <!-- ============ HERO ============ -->
+    <section class="hero container" aria-labelledby="hero-title">
+      <div class="hero-text reveal">
+        <p class="kicker"><span class="dot"></span> {site.current} · {site.location}</p>
+        <h1 id="hero-title">
+          <span class="grad">3D Generalist</span> &amp;<br />Game Developer
+        </h1>
+        <p class="hero-sub">
+          Hi, I’m {firstName}. I build VR training experiences, real-time environments and playable prototypes
+          in Unreal Engine and Blender, and turn ideas into worlds you can explore.
+        </p>
+        <div class="actions">
+          <a class="btn btn-primary" href="#work">See my work <span aria-hidden="true">↓</span></a>
+          <a class="btn btn-ghost" href="#contact">Get in touch</a>
         </div>
       </div>
+
+      <div class="hero-media reveal">
+        <Scene3D shape="knot" class="hero-scene" />
+        <div class="frame frame-main" data-tilt="10">
+          <Picture
+            src={heroImage}
+            formats={['avif', 'webp']}
+            fallbackFormat="jpg"
+            widths={[480, 800, 1200, 1600]}
+            sizes="(min-width: 960px) 52vw, 92vw"
+            alt="3D render of a blue sports car in a lit garage"
+            loading="eager"
+            fetchpriority="high"
+          />
+        </div>
+        <div class="frame frame-float">
+          <Picture
+            src={heroImage2}
+            formats={['avif', 'webp']}
+            fallbackFormat="jpg"
+            widths={[240, 480]}
+            sizes="200px"
+            alt="3D render of a steel watch on a pastel podium"
+          />
+        </div>
+        <p class="badge"><strong>Blender</strong> · <strong>Unreal Engine 5</strong></p>
+      </div>
+
+      <ul class="highlights reveal">
+        {
+          highlights.map((h) => (
+            <li>
+              <strong>{h.value}</strong>
+              <span>{h.label}</span>
+            </li>
+          ))
+        }
+      </ul>
     </section>
 
-    <section id="work" class="section" aria-labelledby="work-title">
-      <div class="container">
-        <div class="section-head">
-          <h2 id="work-title">Selected work</h2>
-          <div class="filters" role="group" aria-label="Filter projects">
-            <button type="button" class="chip" data-filter="all" aria-pressed="true">All</button>
-            {
-              categories.map((c) => (
-                <button type="button" class="chip" data-filter={c.id} aria-pressed="false">
-                  {c.label}
-                </button>
-              ))
-            }
-          </div>
-        </div>
+    <!-- ============ STATEMENT ============ -->
+    <section class="statement container reveal" aria-label="Approach">
+      <Scene3D shape="sphere" class="statement-scene" />
+      <h2>Art <span class="amp">&amp;</span> <span class="grad">Engineering</span></h2>
+      <p>
+        Every project starts as a sketch or a storyboard. I shape it in 3D, then make it run in real time, so it
+        looks right and works right.
+      </p>
+    </section>
 
-        <ul class="grid">
+    <!-- ============ WORK ============ -->
+    <section id="work" class="section container" aria-labelledby="work-title">
+      <div class="section-head reveal">
+        <div>
+          <p class="eyebrow">Portfolio</p>
+          <h2 id="work-title">Selected <span class="grad">work</span></h2>
+        </div>
+        <div class="filters" role="group" aria-label="Filter projects">
+          <button type="button" class="chip" data-filter="all" aria-pressed="true">All</button>
           {
-            projects.map((p, i) => (
-              <li class:list={['card', { wide: p.wide }]} data-category={p.category}>
-                <button type="button" class="card-media" data-gallery={i} aria-label={`Open ${p.title} gallery`}>
+            categories.map((c) => (
+              <button type="button" class="chip" data-filter={c.id} aria-pressed="false">
+                {c.label}
+              </button>
+            ))
+          }
+        </div>
+      </div>
+
+      <ul class="grid">
+        {
+          projects.map((p, i) => (
+            <li class:list={['card reveal', { wide: p.wide }]} data-category={p.category} data-tilt="6">
+              {p.images.length > 0 ? (
+                <button
+                  type="button"
+                  class="card-media"
+                  data-gallery={i}
+                  data-cursor="View"
+                  aria-label={`Open ${p.title} gallery`}
+                >
                   <Picture
                     src={p.images[0].src}
                     formats={['avif', 'webp']}
-        fallbackFormat="jpg"
-                    widths={[480, 800, 1200]}
-                    sizes={p.wide ? '(min-width: 1000px) 66vw, 100vw' : '(min-width: 1000px) 33vw, (min-width: 640px) 50vw, 100vw'}
+                    fallbackFormat="jpg"
+                    widths={[400, 700, 1100].filter((w) => w <= p.images[0].src.width * 1.5)}
+                    sizes={
+                      p.wide
+                        ? '(min-width: 1080px) 760px, 92vw'
+                        : '(min-width: 1080px) 370px, (min-width: 700px) 46vw, 92vw'
+                    }
                     alt={p.images[0].alt}
-                    loading={i < 2 ? 'eager' : 'lazy'}
+                    loading="lazy"
                   />
                   {p.images.length > 1 && <span class="count">{p.images.length} images</span>}
                 </button>
-                <div class="card-body">
-                  <h3>{p.title}</h3>
-                  <p class="meta">
-                    {p.tools.join(', ')}
-                  </p>
-                  <p class="summary">{p.summary}</p>
-                </div>
-              </li>
-            ))
-          }
-        </ul>
-      </div>
+              ) : (
+                <a
+                  class="card-media video-card"
+                  href={p.link?.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-cursor="Play"
+                  aria-label={`${p.link?.label ?? 'Watch'}: ${p.title} (opens LinkedIn)`}
+                >
+                  <span class="play" aria-hidden="true"></span>
+                  <span class="video-title">{p.title.split(' — ')[0]}</span>
+                  <span class="video-sub">Video on LinkedIn</span>
+                </a>
+              )}
+              <div class="card-body">
+                <h3>{p.title}</h3>
+                <p class="meta">
+                  {p.date && <span>{p.date} · </span>}
+                  {p.tools.join(' · ')}
+                </p>
+                <p class="summary">{p.summary}</p>
+                {
+                  p.link && (
+                    <a class="card-link" href={p.link.href} target="_blank" rel="noopener noreferrer">
+                      {p.link.label} <span aria-hidden="true">↗</span>
+                    </a>
+                  )
+                }
+              </div>
+            </li>
+          ))
+        }
+      </ul>
     </section>
 
-    <section id="about" class="section section-alt" aria-labelledby="about-title">
-      <div class="container about">
-        <div class="about-photo">
-          <Picture
-            src={profile}
-            formats={['avif', 'webp']}
-        fallbackFormat="jpg"
-            widths={[320, 640]}
-            sizes="(min-width: 900px) 320px, 60vw"
-            alt={`Portrait of ${site.name}`}
-          />
-        </div>
-        <div class="about-text">
-          <h2 id="about-title">About</h2>
-          {about.map((p) => <p>{p}</p>)}
-          <h3 class="small-head">Tools</h3>
-          <ul class="tools">
-            {tools.map((t) => <li>{t}</li>)}
-          </ul>
-        </div>
-      </div>
-
-      <div class="container">
-        <h3 class="small-head services-head">What I do</h3>
-        <ul class="services">
-          {
-            services.map((s) => (
-              <li>
-                <h4>{s.title}</h4>
-                <p>{s.text}</p>
-              </li>
-            ))
-          }
-        </ul>
-      </div>
-    </section>
-
-    <section id="contact" class="section" aria-labelledby="contact-title">
-      <div class="container contact">
+    <!-- ============ SKILLS ============ -->
+    <section id="skills" class="section container" aria-labelledby="skills-title">
+      <div class="section-head reveal">
         <div>
-          <h2 id="contact-title">Let’s work together</h2>
-          <p class="contact-lede">
-            Open to full-time roles and freelance projects in 3D, product visualization and Unreal Engine.
-          </p>
-          <div class="hero-actions">
-            <a class="btn btn-primary" href={`mailto:${site.email}`}>Email me</a>
-            <a class="btn" href={resumeUrl} download>Download résumé</a>
-          </div>
-          <ul class="socials">
+          <p class="eyebrow">Skills</p>
+          <h2 id="skills-title">What I <span class="grad">bring</span></h2>
+        </div>
+      </div>
+      <ul class="skill-groups">
+        {
+          skillGroups.map((g, i) => (
+            <li class="glass skill-card reveal" data-tilt="5">
+              <span class="num">0{i + 1}</span>
+              <h3>{g.title}</h3>
+              <ul class="tags">
+                {g.skills.map((s) => (
+                  <li>{s}</li>
+                ))}
+              </ul>
+            </li>
+          ))
+        }
+      </ul>
+      <div class="toolbelt reveal">
+        <p class="col-title">Software</p>
+        <ul class="marquee" aria-label="Software">
+          {[...software, ...software].map((s, i) => <li aria-hidden={i >= software.length ? 'true' : undefined}>{s}</li>)}
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============ CAREER ============ -->
+    <section id="career" class="section container" aria-labelledby="career-title">
+      <div class="section-head reveal">
+        <div>
+          <p class="eyebrow">Career</p>
+          <h2 id="career-title">Experience &amp; <span class="grad">education</span></h2>
+        </div>
+        <a class="btn btn-ghost" href={resumeUrl} download>Download résumé <span aria-hidden="true">↗</span></a>
+      </div>
+
+      <div class="career">
+        <div class="career-col">
+          <h3 class="col-title reveal">Experience</h3>
+          <ol class="timeline">
             {
-              socials.map((s) => (
-                <li>
-                  <a href={s.href} target="_blank" rel="noopener noreferrer">
-                    {s.label} <span aria-hidden="true">↗</span>
-                  </a>
+              experience.map((job) => (
+                <li class="glass reveal">
+                  {job.period && <p class="period">{job.period}</p>}
+                  <h4>{job.role}</h4>
+                  <p class="company">
+                    {job.company}
+                    {job.type && <span class="type"> · {job.type}</span>}
+                  </p>
+                  <ul class="points">
+                    {job.points.map((pt) => (
+                      <li>{pt}</li>
+                    ))}
+                  </ul>
                 </li>
               ))
             }
-          </ul>
+          </ol>
         </div>
+
+        <div class="career-col">
+          <h3 class="col-title reveal">Education</h3>
+          <ol class="timeline">
+            {
+              education.map((ed) => (
+                <li class="glass reveal">
+                  <p class="period">{ed.year}</p>
+                  <h4>{ed.degree}</h4>
+                  <p class="company">{ed.school}</p>
+                  {ed.note && <p class="note">{ed.note}</p>}
+                </li>
+              ))
+            }
+          </ol>
+
+          <div class="glass skills reveal">
+            <h3 class="col-title">Languages</h3>
+            <ul class="tags">{languages.map((s) => <li>{s}</li>)}</ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ MOMENTS ============ -->
+    <section id="moments" class="section container" aria-labelledby="moments-title">
+      <div class="section-head reveal">
+        <div>
+          <p class="eyebrow">Moments</p>
+          <h2 id="moments-title">Events &amp; <span class="grad">milestones</span></h2>
+        </div>
+      </div>
+      <ol class="moments">
+        {
+          moments.map((m, i) => (
+            <li class="moment glass reveal" data-tilt="4">
+              <div class="moment-head">
+                <span class="moment-tag">{m.tag}</span>
+                <span class="moment-date">{m.date}</span>
+              </div>
+              <h3>{m.title}</h3>
+              <p>{m.text}</p>
+              {m.images.length > 0 && (
+                <button
+                  type="button"
+                  class="moment-photos"
+                  data-gallery={projects.length + i}
+                  data-cursor="View"
+                  aria-label={`Open photos: ${m.title}`}
+                >
+                  {m.images.slice(0, 3).map((img) => (
+                    <Picture
+                      src={img.src}
+                      formats={['avif', 'webp']}
+                      fallbackFormat="jpg"
+                      widths={[240, 480]}
+                      sizes="(min-width: 900px) 160px, 30vw"
+                      alt={img.alt}
+                      loading="lazy"
+                    />
+                  ))}
+                </button>
+              )}
+              {m.link && (
+                <a class="card-link" href={m.link} target="_blank" rel="noopener noreferrer">
+                  Read on LinkedIn <span aria-hidden="true">↗</span>
+                </a>
+              )}
+            </li>
+          ))
+        }
+      </ol>
+    </section>
+
+    <!-- ============ ABOUT ============ -->
+    <section id="about" class="section container" aria-labelledby="about-title">
+      <div class="about">
+        <div class="about-photo reveal">
+          <div class="frame">
+            <Picture
+              src={profile}
+              formats={['avif', 'webp']}
+              fallbackFormat="jpg"
+              widths={[320, 640]}
+              sizes="(min-width: 900px) 340px, 70vw"
+              alt={`Portrait of ${site.name}`}
+            />
+          </div>
+        </div>
+        <div class="about-text reveal">
+          <p class="eyebrow">About</p>
+          <h2 id="about-title">Storyteller with a <span class="grad">technical</span> streak</h2>
+          {about.map((p) => <p>{p}</p>)}
+          <p class="passions"><span>Off the clock:</span> {passions.join(' · ')}</p>
+        </div>
+      </div>
+
+      <ul class="services">
+        {
+          services.map((s, i) => (
+            <li class="glass reveal">
+              <span class="num">0{i + 1}</span>
+              <h3>{s.title}</h3>
+              <p>{s.text}</p>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <!-- ============ CONTACT ============ -->
+    <section id="contact" class="section container" aria-labelledby="contact-title">
+      <div class="cta glass reveal">
+        <p class="eyebrow">Contact</p>
+        <h2 id="contact-title">Let’s build something <span class="grad">real</span></h2>
+        <p class="cta-sub">
+          Open to collaborations, freelance projects and new opportunities in 3D, VR and Unreal Engine.
+        </p>
+        <div class="actions center">
+          <a class="btn btn-primary" href={`mailto:${site.email}`}>Email me <span aria-hidden="true">↗</span></a>
+          <a class="btn btn-ghost" href={resumeUrl} download>Download résumé</a>
+        </div>
+        <p class="email">{site.email}</p>
+        <ul class="socials">
+          {
+            socials.map((s) => (
+              <li>
+                <a href={s.href} target="_blank" rel="noopener noreferrer">
+                  {s.label} <span aria-hidden="true">↗</span>
+                </a>
+              </li>
+            ))
+          }
+        </ul>
 
         {
           site.formspreeId && (
             <form class="contact-form" action={`https://formspree.io/f/${site.formspreeId}`} method="POST">
-              <label>
-                Name
-                <input type="text" name="name" autocomplete="name" required />
-              </label>
-              <label>
-                Email
-                <input type="email" name="email" autocomplete="email" required />
-              </label>
-              <label>
-                Message
-                <textarea name="message" rows="5" required />
-              </label>
+              <input type="text" name="name" autocomplete="name" placeholder="Name" aria-label="Name" required />
+              <input type="email" name="email" autocomplete="email" placeholder="Email" aria-label="Email" required />
+              <textarea name="message" rows="4" placeholder="Message" aria-label="Message" required />
               <button type="submit" class="btn btn-primary">
                 Send message
               </button>
@@ -197,11 +433,9 @@ const galleries = await Promise.all(
     </section>
   </main>
 
-  <footer class="footer">
-    <div class="container footer-inner">
-      <p>© {year} {site.name}</p>
-      <a href="#top">Back to top ↑</a>
-    </div>
+  <footer class="footer container">
+    <p>© {year} {site.name}</p>
+    <a href="#top">Back to top ↑</a>
   </footer>
 
   <dialog class="lightbox" aria-label="Image viewer">
@@ -224,6 +458,47 @@ const galleries = await Promise.all(
     type Img = { src: string; alt: string; w: number; h: number };
     type Gallery = { title: string; images: Img[] };
 
+    // --- Mobile menu ---
+    const menuBtn = document.querySelector<HTMLButtonElement>('.menu-btn')!;
+    const topbar = document.querySelector('.topbar')!;
+    const setMenu = (open: boolean) => {
+      topbar.classList.toggle('open', open);
+      menuBtn.setAttribute('aria-expanded', String(open));
+    };
+    menuBtn.addEventListener('click', () => setMenu(!topbar.classList.contains('open')));
+    document.querySelectorAll('#nav-list a').forEach((a) => a.addEventListener('click', () => setMenu(false)));
+
+    // --- Highlight the current section in the nav ---
+    const links = new Map(
+      [...document.querySelectorAll<HTMLAnchorElement>('#nav-list a')].map((a) => [a.hash.slice(1), a]),
+    );
+    const spy = new IntersectionObserver(
+      (entries) =>
+        entries.forEach((e) => {
+          if (!e.isIntersecting) return;
+          links.forEach((a) => a.removeAttribute('aria-current'));
+          links.get(e.target.id)?.setAttribute('aria-current', 'true');
+        }),
+      { rootMargin: '-45% 0px -50% 0px' },
+    );
+    links.forEach((_, id) => {
+      const el = document.getElementById(id);
+      if (el) spy.observe(el);
+    });
+
+    // --- Reveal on scroll ---
+    const reveal = new IntersectionObserver(
+      (entries) =>
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add('in');
+            reveal.unobserve(e.target);
+          }
+        }),
+      { rootMargin: '0px 0px -8% 0px' },
+    );
+    document.querySelectorAll('.reveal').forEach((el) => reveal.observe(el));
+
     // --- Filters ---
     const chips = document.querySelectorAll<HTMLButtonElement>('.chip');
     const cards = document.querySelectorAll<HTMLElement>('.card');
@@ -234,6 +509,7 @@ const galleries = await Promise.all(
         cards.forEach((card) => {
           card.hidden = f !== 'all' && card.dataset.category !== f;
           card.classList.toggle('solo', f !== 'all');
+          card.classList.add('in');
         });
       }),
     );
@@ -262,7 +538,6 @@ const galleries = await Promise.all(
       caption.textContent = item.alt;
       count.textContent = n > 1 ? `${index + 1} / ${n}` : '';
       prev.hidden = next.hidden = n < 2;
-      // Preload the neighbour so arrows feel instant.
       if (n > 1) new Image().src = current.images[(index + 1) % n].src;
     }
 
@@ -274,7 +549,6 @@ const galleries = await Promise.all(
         dialog.showModal();
       }),
     );
-
     prev.addEventListener('click', () => show(index - 1));
     next.addEventListener('click', () => show(index + 1));
     dialog.querySelector('.lb-close')!.addEventListener('click', () => dialog.close());
@@ -286,8 +560,6 @@ const galleries = await Promise.all(
       if (e.key === 'ArrowRight') show(index + 1);
     });
     dialog.addEventListener('close', () => img.removeAttribute('src'));
-
-    // Swipe on touch screens.
     let startX = 0;
     dialog.addEventListener('touchstart', (e) => (startX = e.touches[0].clientX), { passive: true });
     dialog.addEventListener('touchend', (e) => {

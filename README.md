@@ -15,13 +15,35 @@ npm run preview   # serve the production build
 
 | What | Where |
 | --- | --- |
-| Name, role, about text, services, tools, links, email | `src/data/site.ts` |
+| Name, role, current job, about text, services, links, email | `src/data/site.ts` |
+| Career: experience, education, languages | `src/data/site.ts` (`experience`, `education`, `languages`) |
+| Skills groups and the scrolling Software list | `src/data/site.ts` (`skillGroups`, `software`) |
 | Projects (title, category, tools, description, images, order) | `src/data/projects.ts` |
+| Moments: events, milestones, awards | `src/data/moments.ts` — images go in `src/assets/moments/` |
 | Project images | `src/assets/work/<category>/` — drop in full-resolution PNG/JPG, the build optimizes them |
 | Résumé PDF | `public/SyedRiyaz-Resume.pdf` |
-| Colours, fonts, spacing | `src/styles/global.css` (variables at the top) |
+| Colours, fonts, spacing | `src/styles/global.css` (theme variables at the top) |
 
 **Add a project:** put the images in `src/assets/work/...`, import them at the top of `projects.ts`, and add an entry to the `projects` list. Its position in the list is its position on the page.
+
+Optional fields in `projects.ts`:
+
+- `date` — a year or month shown on the card (e.g. `'2025'`, `'2024–25'`).
+- `link` — `{ label, href }`, shown as a button on the card (e.g. a LinkedIn video post).
+- `wide: true` — makes the card span two columns on large screens.
+
+For LinkedIn posts, use the `post('<activity id>')` helper: pass the number from the post's URL (`...urn:li:activity:<id>...`) and it builds the full link. A video-only project can have `images: []`; it then renders as a styled "video card" that links to `link.href`, so give it a `link`.
+
+**Add a moment:** put the photos in `src/assets/moments/`, import them at the top of `moments.ts`, and add an entry to the `moments` list (newest first). Each one has a `date`, a `tag` (Event, Milestone, Award…), a `title`, `text`, and `images` (can be `[]`). `link` is optional; use `post('<activity id>')` for a LinkedIn post.
+
+## Interactive 3D
+
+- **`src/components/Scene3D.astro`** draws a lightweight wireframe on a `<canvas>` (no 3D library). It spins slowly, turns toward the mouse and pushes its points away from the cursor. Use `<Scene3D shape="knot" />` or `shape="sphere"`. It only animates while on screen. With reduced-motion on, the auto-spin stops and it redraws only when the pointer moves.
+- **`src/components/Cursor.astro`** adds the custom dot-and-ring cursor. It also provides two attributes you can put on any element:
+  - `data-tilt="N"` — the element leans toward the cursor, up to N degrees (default 8).
+  - `data-cursor="Label"` — shows that word inside the cursor ring while hovering.
+
+The custom cursor and tilt are for mouse devices only; touch screens keep their normal behaviour. Tilt is also off when the visitor prefers reduced motion.
 
 **Contact form:** off by default (the page shows an "Email me" button). To turn it on, create a free form at formspree.io and paste its ID into `formspreeId` in `site.ts`.
 

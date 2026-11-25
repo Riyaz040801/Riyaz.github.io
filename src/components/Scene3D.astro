@@ -1,0 +1,209 @@
+---
+// A tiny real-time 3D wireframe (no libraries, ~3 KB). It slowly spins on its own,
+// turns toward the mouse (or finger), and pushes its points away from the cursor.
+interface Props {
+  shape?: 'knot' | 'sphere';
+  class?: string;
+}
+const { shape = 'knot', class: className } = Astro.props;
+---
+
+<canvas class:list={['scene3d', className]} data-shape={shape} aria-hidden="true"></canvas>
+
+<script>
+  type V3 = [number, number, number];
+
+  function torusKnot(p = 2, q = 3, segs = 150, rings = 7, R = 1, r = 0.42, tube = 0.16) {
+    const pts: V3[] = [];
+    const edges: [number, number][] = [];
+    const curve = (t: number): V3 => {
+      const c = Math.cos(q * t);
+      return [(R + r * c) * Math.cos(p * t), (R + r * c) * Math.sin(p * t), r * Math.sin(q * t)];
+    };
+    for (let i = 0; i < segs; i++) {
+      const t = (i / segs) * Math.PI * 2;
+      const a = curve(t);
+      const b = curve(t + 0.01);
+      const T = norm(sub(b, a));
+      const N = norm(add(a, b));
+      const B = norm(cross(T, N));
+      const N2 = cross(B, T);
+      for (let j = 0; j < rings; j++) {
+        const s = (j / rings) * Math.PI * 2;
+        const cx = Math.cos(s) * tube;
+        const sy = Math.sin(s) * tube;
+        pts.push([a[0] + N2[0] * cx + B[0] * sy, a[1] + N2[1] * cx + B[1] * sy, a[2] + N2[2] * cx + B[2] * sy]);
+        const k = i * rings + j;
+        edges.push([k, i * rings + ((j + 1) % rings)]);
+        edges.push([k, ((i + 1) % segs) * rings + j]);
+      }
+    }
+    return { pts, edges };
+  }
+
+  function icosphere(subdiv = 2) {
+    const t = (1 + Math.sqrt(5)) / 2;
+    let pts: V3[] = [
+      [-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0], [0, -1, t], [0, 1, t],
+      [0, -1, -t], [0, 1, -t], [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1],
+    ].map((v) => norm(v as V3));
+    let faces = [
+      [0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6],
+      [7, 1, 8], [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1],
+    ];
+    for (let s = 0; s < subdiv; s++) {
+      const cache = new Map<string, number>();
+      const mid = (a: number, b: number) => {
+        const key = a < b ? `${a}_${b}` : `${b}_${a}`;
+        if (!cache.has(key)) {
+          pts.push(norm(scale(add(pts[a], pts[b]), 0.5)));
+          cache.set(key, pts.length - 1);
+        }
+        return cache.get(key)!;
+      };
+      faces = faces.flatMap(([a, b, c]) => {
+        const ab = mid(a, b), bc = mid(b, c), ca = mid(c, a);
+        return [[a, ab, ca], [b, bc, ab], [c, ca, bc], [ab, bc, ca]];
+      });
+    }
+    const set = new Set<string>();
+    const edges: [number, number][] = [];
+    for (const [a, b, c] of faces) {
+      for (const [x, y] of [[a, b], [b, c], [c, a]]) {
+        const key = x < y ? `${x}_${y}` : `${y}_${x}`;
+        if (!set.has(key)) {
+          set.add(key);
+          edges.push([x, y]);
+        }
+      }
+    }
+    return { pts: pts.map((p) => scale(p, 1.15)), edges };
+  }
+
+  function sub(a: V3, b: V3): V3 { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+  function add(a: V3, b: V3): V3 { return [a[0] + b[0], a[1] + b[1], a[2] + b[2]]; }
+  function scale(a: V3, s: number): V3 { return [a[0] * s, a[1] * s, a[2] * s]; }
+  function cross(a: V3, b: V3): V3 { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+  function norm(a: V3): V3 { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; }
+
+  // Shared pointer, in viewport pixels. Touch counts only while the finger is down.
+  const pointer = { x: innerWidth / 2, y: innerHeight / 2, active: false };
+  addEventListener('pointermove', (e) => { pointer.x = e.clientX; pointer.y = e.clientY; pointer.active = true; }, { passive: true });
+  const release = (e: PointerEvent) => { if (e.pointerType !== 'mouse') pointer.active = false; };
+  addEventListener('pointerup', release);
+  addEventListener('pointercancel', release);
+  document.documentElement.addEventListener('pointerleave', () => (pointer.active = false));
+
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const coarse = matchMedia('(pointer: coarse)').matches;
+
+  document.querySelectorAll<HTMLCanvasElement>('canvas.scene3d').forEach((canvas) => {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    // Lighter mesh on phones/tablets.
+    const mesh = canvas.dataset.shape === 'sphere' ? icosphere(2) : torusKnot(2, 3, coarse ? 90 : 150, coarse ? 6 : 7);
+    const proj = mesh.pts.map(() => [0, 0, 0] as V3);
+    let w = 0, h = 0, dpr = 1, visible = false, raf = 0;
+    let rx = 0.4, ry = 0, tx = 0, ty = 0, spin = 0;
+    let grad: CanvasGradient | null = null;
+
+    const resize = () => {
+      const r = canvas.getBoundingClientRect();
+      dpr = Math.min(devicePixelRatio || 1, coarse ? 1.5 : 2);
+      w = r.width; h = r.height;
+      const cw = Math.round(w * dpr), ch = Math.round(h * dpr);
+      if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
+      const size = Math.min(w, h) * 0.36;
+      grad = ctx.createLinearGradient(w / 2 - size, h / 2 - size, w / 2 + size, h / 2 + size);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.5, '#e6dfd0');
+      grad.addColorStop(1, '#7a7a7a');
+      // Resizing clears the canvas: draw again (also restarts a loop that stopped at 0 size).
+      if (visible && !raf) raf = requestAnimationFrame(frame);
+    };
+    new ResizeObserver(resize).observe(canvas);
+
+    const frame = (time: number) => {
+      raf = 0;
+      if (!w || !h || !grad) return;
+      const rect = canvas.getBoundingClientRect();
+      // Mouse position relative to this canvas's centre, roughly -1..1.
+      const mx = (pointer.x - (rect.left + w / 2)) / (w / 2);
+      const my = (pointer.y - (rect.top + h / 2)) / (h / 2);
+      tx = pointer.active ? Math.max(-1.2, Math.min(1.2, mx)) * 0.9 : 0;
+      ty = pointer.active ? Math.max(-1.2, Math.min(1.2, my)) * 0.7 : 0;
+      if (!still) spin = time * 0.00018;
+      ry += (tx + spin - ry) * 0.06;
+      rx += (0.4 + ty - rx) * 0.06;
+
+      const size = Math.min(w, h) * 0.36;
+      const cx = w / 2, cy = h / 2;
+      const cosY = Math.cos(ry), sinY = Math.sin(ry), cosX = Math.cos(rx), sinX = Math.sin(rx);
+      const px = pointer.x - rect.left, py = pointer.y - rect.top;
+
+      for (let i = 0; i < mesh.pts.length; i++) {
+        const [x0, y0, z0] = mesh.pts[i];
+        const x1 = x0 * cosY - z0 * sinY;
+        const z1 = x0 * sinY + z0 * cosY;
+        const y1 = y0 * cosX - z1 * sinX;
+        const z2 = y0 * sinX + z1 * cosX;
+        const persp = 3 / (3 + z2);
+        let sx = cx + x1 * size * persp;
+        let sy = cy + y1 * size * persp;
+        // Push points away from the cursor like a force field.
+        if (pointer.active) {
+          const dx = sx - px, dy = sy - py;
+          const d2 = dx * dx + dy * dy;
+          const R = size * 0.55;
+          if (d2 < R * R) {
+            const f = (1 - Math.sqrt(d2) / R) * 22;
+            const d = Math.sqrt(d2) || 1;
+            sx += (dx / d) * f;
+            sy += (dy / d) * f;
+          }
+        }
+        proj[i][0] = sx; proj[i][1] = sy; proj[i][2] = z2;
+      }
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 1;
+      // Two passes: far edges faint, near edges bright → depth.
+      for (const [near, alpha] of [[false, 0.18], [true, 0.75]] as const) {
+        ctx.globalAlpha = alpha;
+        ctx.beginPath();
+        for (const [a, b] of mesh.edges) {
+          const isNear = proj[a][2] + proj[b][2] < 0;
+          if (isNear !== near) continue;
+          ctx.moveTo(proj[a][0], proj[a][1]);
+          ctx.lineTo(proj[b][0], proj[b][1]);
+        }
+        ctx.stroke();
+      }
+      // Glowing vertices on the near side.
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      for (let i = 0; i < proj.length; i += 3) {
+        if (proj[i][2] < -0.2) ctx.rect(proj[i][0] - 0.8, proj[i][1] - 0.8, 1.6, 1.6);
+      }
+      ctx.fill();
+      ctx.globalAlpha = 1;
+
+      if (visible && !still) raf = requestAnimationFrame(frame);
+    };
+
+    // Only animate while on screen.
+    new IntersectionObserver(([e]) => {
+      visible = e.isIntersecting;
+      if (visible && !raf) raf = requestAnimationFrame(frame);
+    }).observe(canvas);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && visible && !raf) raf = requestAnimationFrame(frame);
+    });
+    if (still) {
+      addEventListener('pointermove', () => { if (visible && !raf) raf = requestAnimationFrame(frame); }, { passive: true });
+    }
+  });
+</script>
