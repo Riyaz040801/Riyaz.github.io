@@ -1,0 +1,222 @@
+---
+/**
+ * Draggable, auto-scrolling marquee of pills.
+ * Auto-scrolls; drag (mouse/touch), horizontal wheel / shift+wheel and
+ * ArrowLeft/ArrowRight move it. Copies are cloned at runtime (aria-hidden).
+ */
+interface Props {
+  items: string[];
+  label?: string;
+  speed?: number; // px per second
+  class?: string;
+}
+const { items, label = 'Software', speed = 40, class: cls } = Astro.props;
+---
+
+<div class:list={['mq', cls]}>
+  <p class="mq-title">{label}</p>
+  <div
+    class="mq-view"
+    data-mq
+    data-speed={speed}
+    data-cursor="Drag"
+    tabindex="0"
+    role="region"
+    aria-label={`${label} (drag or use arrow keys to scroll)`}
+  >
+    <div class="mq-track">
+      <ul class="mq-group" aria-label={label}>
+        {items.map((s) => <li>{s}</li>)}
+      </ul>
+    </div>
+  </div>
+</div>
+
+<style>
+  .mq {
+    margin-top: 2.5rem;
+  }
+  .mq-title {
+    font-size: 0.78rem;
+    font-family: var(--font-body);
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 1rem;
+    padding-left: 8%;
+  }
+  .mq-view {
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    cursor: grab;
+    outline: none;
+    border-radius: 999px;
+  }
+  .mq-view:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--text);
+  }
+  .mq-view.mq-drag {
+    cursor: grabbing;
+  }
+  :global(.has-cursor) .mq-view,
+  :global(.has-cursor) .mq-view * {
+    cursor: none;
+  }
+  .mq-track {
+    display: flex;
+    width: max-content;
+    will-change: transform;
+  }
+  .mq-group {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0 0.75rem 0 0; /* trailing gap so one group == one loop period */
+    margin: 0;
+    list-style: none;
+  }
+  .mq-group li {
+    padding: 0.7rem 1.25rem;
+    border-radius: 999px;
+    border: 1px solid var(--glass-line);
+    background: var(--glass);
+    color: var(--text);
+    font: 600 0.95rem var(--font-head);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+</style>
+
+<script>
+  const R = matchMedia('(prefers-reduced-motion: reduce)');
+  document.querySelectorAll<HTMLElement>('[data-mq]').forEach((el) => {
+    const track = el.firstElementChild as HTMLElement;
+    const g = track.firstElementChild as HTMLElement;
+    const spd = +el.dataset.speed! || 40;
+    const now = () => performance.now();
+    let x = 0, v = 0, w = 1, auto = 0, idle = -2e3, lastT = 0, raf = 0;
+    let vis = false, hover = false, drag = false, axis = 0, pid = -1, px = 0, py = 0, lx = 0, lt = 0;
+
+    const fill = () => {
+      w = g.offsetWidth || 1;
+      const need = Math.ceil((el.offsetWidth * 2) / w) + 1;
+      while (track.children.length < need) {
+        const c = g.cloneNode(true) as HTMLElement;
+        c.removeAttribute('aria-label');
+        c.setAttribute('aria-hidden', 'true');
+        track.append(c);
+      }
+    };
+
+    const tick = (t: number) => {
+      const dt = Math.min((t - lastT) / 1e3, 0.05);
+      lastT = t;
+      if (!drag) {
+        if (Math.abs(v) > 4) {
+          x += v * dt;
+          v *= Math.pow(0.04, dt); // friction
+          idle = t;
+        } else v = 0;
+        const target = hover || R.matches || t - idle < 1500 ? 0 : 1;
+        auto += (target - auto) * Math.min(1, dt * 1.5);
+        x += spd * auto * dt;
+      }
+      x = ((x % w) + w) % w;
+      track.style.transform = `translate3d(${-x}px,0,0)`;
+      const sleep = !drag && !v && auto < 1e-3 && (hover || R.matches);
+      raf = vis && !document.hidden && !sleep ? requestAnimationFrame(tick) : 0;
+    };
+    const wake = () => {
+      if (!raf && vis && !document.hidden) {
+        lastT = now();
+        raf = requestAnimationFrame(tick);
+      }
+    };
+    const nudge = (d: number) => {
+      x += d;
+      auto = 0;
+      idle = now();
+      wake();
+    };
+
+    el.addEventListener('pointerdown', (e) => {
+      if (e.button) return;
+      drag = true;
+      axis = v = auto = 0;
+      pid = e.pointerId;
+      px = lx = e.clientX;
+      py = e.clientY;
+      lt = e.timeStamp;
+      wake();
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (!drag || e.pointerId !== pid) return;
+      if (!axis) {
+        const dx = Math.abs(e.clientX - px), dy = Math.abs(e.clientY - py);
+        if (dx + dy < 6) return;
+        axis = dx > dy ? 1 : 2;
+        if (axis == 1) {
+          el.setPointerCapture(pid);
+          el.classList.add('mq-drag');
+        }
+      }
+      if (axis != 1) return;
+      const d = e.clientX - lx, dt = e.timeStamp - lt;
+      x -= d;
+      if (dt > 0) v = v * 0.2 - (d / dt) * 800;
+      lx = e.clientX;
+      lt = e.timeStamp;
+    });
+    const up = (e: PointerEvent) => {
+      if (e.pointerId !== pid) return;
+      drag = false;
+      pid = -1;
+      idle = now();
+      if (axis != 1 || e.timeStamp - lt > 80) v = 0;
+      el.classList.remove('mq-drag');
+      wake();
+    };
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+    el.addEventListener('dragstart', (e) => e.preventDefault());
+    el.addEventListener('pointerenter', (e) => {
+      if (e.pointerType == 'mouse') hover = true;
+    });
+    el.addEventListener('pointerleave', (e) => {
+      if (e.pointerType == 'mouse') (hover = false), wake();
+    });
+    el.addEventListener(
+      'wheel',
+      (e) => {
+        const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.shiftKey ? e.deltaY : 0;
+        if (!d) return;
+        e.preventDefault();
+        v = 0;
+        nudge(d);
+      },
+      { passive: false },
+    );
+    el.addEventListener('keydown', (e) => {
+      const k = e.key == 'ArrowRight' ? 1 : e.key == 'ArrowLeft' ? -1 : 0;
+      if (!k) return;
+      e.preventDefault();
+      v = k * 700;
+      nudge(0);
+    });
+
+    new ResizeObserver(fill).observe(el);
+    new ResizeObserver(fill).observe(g);
+    new IntersectionObserver(([en]) => {
+      vis = en.isIntersecting;
+      wake();
+    }).observe(el);
+    document.addEventListener('visibilitychange', wake);
+    R.addEventListener?.('change', wake);
+    fill();
+  });
+</script>

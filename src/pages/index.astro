@@ -19,9 +19,11 @@ import { moments } from '../data/moments';
 import Scene3D from '../components/Scene3D.astro';
 import Cursor from '../components/Cursor.astro';
 import Logo from '../components/Logo.astro';
+import TimelineFx from '../components/TimelineFx.astro';
+import Marquee from '../components/Marquee.astro';
 import heroImage from '../assets/work/3d/car-garage.png';
-import heroImage2 from '../assets/work/3d/watch-podium.png';
 import profile from '../assets/site/profile.jpeg';
+import portrait from '../assets/site/portrait.jpg';
 
 const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 const resumeUrl = `${base}${site.resume}`;
@@ -54,10 +56,13 @@ const nav = [
 <Base>
   <div class="sky" aria-hidden="true"></div>
   <Cursor />
+  <TimelineFx />
 
-  <header class="topbar" id="top">
+  <!-- Real top-of-page anchor (the header is position:fixed, so it can't be scrolled to). -->
+  <span id="top" class="top-anchor" aria-hidden="true"></span>
+  <header class="topbar">
     <a href="#top" class="logo" aria-label={`${site.name}, back to top`} data-cursor="Top">
-      <Logo size={34} />
+      <Logo size={38} />
     </a>
     <nav class="pill" aria-label="Main">
       <ul id="nav-list">
@@ -90,26 +95,26 @@ const nav = [
 
       <div class="hero-media reveal">
         <Scene3D shape="knot" class="hero-scene" />
-        <div class="frame frame-main" data-tilt="10">
+        <div class="frame frame-main frame-portrait" data-tilt="8">
           <Picture
-            src={heroImage}
+            src={portrait}
             formats={['avif', 'webp']}
             fallbackFormat="jpg"
-            widths={[480, 800, 1200, 1600]}
-            sizes="(min-width: 960px) 52vw, 92vw"
-            alt="3D render of a blue sports car in a lit garage"
+            widths={[360, 560, 800, 1100]}
+            sizes="(min-width: 960px) 400px, 70vw"
+            alt={`Portrait of ${site.name}`}
             loading="eager"
             fetchpriority="high"
           />
         </div>
-        <div class="frame frame-float">
+        <div class="frame frame-float frame-work">
           <Picture
-            src={heroImage2}
+            src={heroImage}
             formats={['avif', 'webp']}
             fallbackFormat="jpg"
-            widths={[240, 480]}
-            sizes="200px"
-            alt="3D render of a steel watch on a pastel podium"
+            widths={[320, 560]}
+            sizes="(min-width: 960px) 240px, 40vw"
+            alt="3D render of a blue sports car in a lit garage"
           />
         </div>
         <p class="badge"><strong>Blender</strong> · <strong>Unreal Engine 5</strong></p>
@@ -241,12 +246,7 @@ const nav = [
           ))
         }
       </ul>
-      <div class="toolbelt reveal">
-        <p class="col-title">Software</p>
-        <ul class="marquee" aria-label="Software">
-          {[...software, ...software].map((s, i) => <li aria-hidden={i >= software.length ? 'true' : undefined}>{s}</li>)}
-        </ul>
-      </div>
+      <Marquee items={software} label="Software" class="reveal" />
     </section>
 
     <!-- ============ CAREER ============ -->

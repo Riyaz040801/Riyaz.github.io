@@ -19,38 +19,56 @@
 
     let x = innerWidth / 2, y = innerHeight / 2, rx = x, ry = y, shown = false, raf = 0;
 
+    // Position goes in the `translate` property; CSS centres the element on that point with
+    // transform: translate(-50%, -50%), so size changes and the press `scale` never shift it.
+    const place = (el: HTMLElement, px: number, py: number) => (el.style.translate = `${px}px ${py}px`);
+
     // The ring eases toward the mouse, and the loop stops once it has caught up.
     const loop = () => {
       const k = still ? 1 : 0.18;
       rx += (x - rx) * k;
       ry += (y - ry) * k;
-      ring.style.transform = `translate(${rx}px, ${ry}px)`;
-      raf = Math.abs(x - rx) + Math.abs(y - ry) > 0.2 ? requestAnimationFrame(loop) : 0;
+      if (Math.abs(x - rx) + Math.abs(y - ry) < 0.2) (rx = x), (ry = y); // land exactly, no sub-pixel offset
+      place(ring, rx, ry);
+      raf = rx !== x || ry !== y ? requestAnimationFrame(loop) : 0;
+    };
+
+    // Jump both straight to the pointer (first move, or coming back into the window).
+    const snap = (e: PointerEvent) => {
+      x = rx = e.clientX;
+      y = ry = e.clientY;
+      place(dot, x, y);
+      place(ring, rx, ry);
     };
 
     addEventListener(
       'pointermove',
       (e) => {
         if (e.pointerType !== 'mouse') return;
-        x = e.clientX;
-        y = e.clientY;
-        dot.style.transform = `translate(${x}px, ${y}px)`;
         if (!shown) {
           shown = true;
-          rx = x;
-          ry = y;
+          snap(e);
           root.classList.add('cursor-on');
+          return;
         }
+        x = e.clientX;
+        y = e.clientY;
+        place(dot, x, y);
         if (!raf) raf = requestAnimationFrame(loop);
       },
       { passive: true },
     );
     root.addEventListener('pointerleave', () => root.classList.remove('cursor-on'));
     root.addEventListener('pointerenter', (e) => {
-      if (e.pointerType === 'mouse' && shown) root.classList.add('cursor-on');
+      if (e.pointerType !== 'mouse' || !shown) return;
+      snap(e);
+      root.classList.add('cursor-on');
     });
+    const release = () => ring.classList.remove('down');
     addEventListener('pointerdown', (e) => e.pointerType === 'mouse' && ring.classList.add('down'));
-    addEventListener('pointerup', () => ring.classList.remove('down'));
+    addEventListener('pointerup', release);
+    addEventListener('pointercancel', release);
+    addEventListener('blur', release); // e.g. mouse released outside the window
 
     // Grow the ring over clickable things; show a word over project cards.
     document.addEventListener('pointerover', (e) => {

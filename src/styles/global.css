@@ -670,16 +670,43 @@ ol {
   gap: 1rem;
   padding-left: 1.5rem;
 }
-.timeline::before {
+/* Line centre = 5px from timeline padding-box edge; dot is centred on the same x */
+.timeline::before,
+.timeline::after {
   content: '';
   position: absolute;
-  left: 5px;
+  left: 4px;
   top: 10px;
-  bottom: 10px;
   width: 2px;
   border-radius: 2px;
-  background: linear-gradient(var(--c3), var(--c2) 70%, transparent);
-  opacity: 0.6;
+}
+.timeline::before {
+  bottom: 10px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.timeline::after {
+  height: calc(100% - 20px);
+  background: linear-gradient(var(--c1), var(--c3));
+  box-shadow: 0 0 8px rgba(230, 223, 208, 0.55);
+}
+.timeline.fx::after {
+  height: var(--progress, 0px);
+}
+.tl-head {
+  display: none;
+}
+.timeline.fx > .tl-head {
+  display: block;
+  position: absolute;
+  left: 5px;
+  top: calc(10px + var(--progress, 0px));
+  width: 8px;
+  height: 8px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: var(--c1);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.15), 0 0 14px 3px rgba(230, 223, 208, 0.7);
+  pointer-events: none;
 }
 .timeline > li {
   position: relative;
@@ -688,13 +715,48 @@ ol {
 .timeline > li::before {
   content: '';
   position: absolute;
-  left: calc(-1.5rem + 1px);
+  left: calc(5px - 1.5rem - 1px); /* -1px: the card's border shifts its pseudo-element */
   top: 1.6rem;
   width: 10px;
   height: 10px;
+  translate: -50% 0;
+  box-sizing: border-box;
   border-radius: 50%;
   background: var(--c1);
   box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.2), 0 0 12px rgba(255, 255, 255, 0.45);
+  transition: background 0.4s, box-shadow 0.4s, border-color 0.4s;
+}
+.timeline.fx > li:not(.lit)::before {
+  background: var(--bg);
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  box-shadow: none;
+}
+.timeline.fx > li.lit::before {
+  animation: tl-pulse 0.9s ease-out 1;
+}
+@keyframes tl-pulse {
+  from {
+    box-shadow: 0 0 0 0 rgba(230, 223, 208, 0.7), 0 0 12px rgba(255, 255, 255, 0.45);
+  }
+  to {
+    box-shadow: 0 0 0 14px rgba(230, 223, 208, 0), 0 0 12px rgba(255, 255, 255, 0.45);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .timeline.fx::after {
+    height: calc(100% - 20px);
+  }
+  .timeline.fx > .tl-head {
+    display: none;
+  }
+  .timeline.fx > li:not(.lit)::before {
+    background: var(--c1);
+    border: 0;
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.2), 0 0 12px rgba(255, 255, 255, 0.45);
+  }
+  .timeline.fx > li.lit::before {
+    animation: none;
+  }
 }
 .period {
   display: inline-block;

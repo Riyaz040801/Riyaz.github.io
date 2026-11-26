@@ -1,0 +1,46 @@
+<script>
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const tls = document.querySelectorAll<HTMLElement>('.timeline');
+  if (!still && 'IntersectionObserver' in window) {
+    const live = new Set<HTMLElement>();
+    const upd = (t: HTMLElement) => {
+      const r = t.getBoundingClientRect();
+      const max = Math.max(0, t.offsetHeight - 20);
+      const p = Math.min(max, Math.max(0, innerHeight * 0.6 - r.top - 10));
+      t.style.setProperty('--progress', p + 'px');
+      t.querySelectorAll<HTMLElement>(':scope > li').forEach((li) =>
+        li.classList.toggle('lit', p + 10 >= li.offsetTop + 31)
+      );
+    };
+    let q = false;
+    const tick = () => {
+      if (q) return;
+      q = true;
+      requestAnimationFrame(() => {
+        q = false;
+        live.forEach(upd);
+      });
+    };
+    const io = new IntersectionObserver(
+      (es) => {
+        es.forEach((e) => {
+          const t = e.target as HTMLElement;
+          e.isIntersecting ? live.add(t) : live.delete(t);
+        });
+        tick();
+      },
+      { rootMargin: '10% 0px' }
+    );
+    tls.forEach((t) => {
+      const h = document.createElement('span');
+      h.className = 'tl-head';
+      h.setAttribute('aria-hidden', 'true');
+      t.appendChild(h);
+      t.classList.add('fx');
+      upd(t);
+      io.observe(t);
+    });
+    addEventListener('scroll', tick, { passive: true });
+    addEventListener('resize', tick, { passive: true });
+  }
+</script>
